@@ -25,7 +25,29 @@ module.exports = function (mongoose) {
         }
     });
 
+    var card = mongoose.Schema({
+        name: String,
+        cmc: Number,
+        primaryType: String,
+        color: String,
+        multiverseId: Number,
+        price: String
+    }, { versionKey: false });
+
+    card.set("toJSON", {
+        transform: function (document, ret) {
+            delete ret._id;
+            delete ret.price;
+        }
+    });
+
+    var set = mongoose.Schema({
+        name: String,
+    }, { versionKey: false });
+
     return {
-        Deck: mongoose.model("decks", deck)
+        Deck: mongoose.model("decks", deck),
+        Card: mongoose.model("cards", card),
+        Set: mongoose.model("sets", set)
     };
 };
