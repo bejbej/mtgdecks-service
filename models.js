@@ -1,53 +1,83 @@
 module.exports = function (mongoose) {
-    var cardGroup = mongoose.Schema({
-        _id: false,
-        name: {
-            type: String,
-            required: true,
-            default: ""
-        },
-        cardBlob: mongoose.Schema.Types.Mixed
-    });
+    var deck = () => {
+        var cardGroup = mongoose.Schema({
+            _id: false,
+            cardBlob: mongoose.Schema.Types.Mixed,
+            name: {
+                type: String,
+                required: true,
+                default: ""
+            }
+        });
 
-    var deck = mongoose.Schema({
-        name: {
-            type: String,
-            required: true,
-            default: ""
-        },
-        cardGroups: [cardGroup]
-    }, { versionKey: false });
+        var deck = mongoose.Schema({
+            cardGroups: [cardGroup],
+            name: {
+                type: String,
+                required: true,
+                default: ""
+            },
+            owners: [String]
+        }, { versionKey: false });
 
-    deck.set("toJSON", {
-        transform: function (document, ret) {
-            ret.id = ret._id;
-            delete ret._id;
-        }
-    });
+        deck.set("toJSON", {
+            transform: function (document, ret) {
+                ret.id = ret._id;
+                delete ret._id;
+            }
+        });
 
-    var card = mongoose.Schema({
-        name: String,
-        cmc: Number,
-        primaryType: String,
-        color: String,
-        multiverseId: Number,
-        price: String
-    }, { versionKey: false });
+        return mongoose.model("decks", deck);
+    }
 
-    card.set("toJSON", {
-        transform: function (document, ret) {
-            delete ret._id;
-            delete ret.price;
-        }
-    });
+    var card = () => {
+        var card = mongoose.Schema({
+            name: String,
+            cmc: Number,
+            primaryType: String,
+            color: String,
+            multiverseId: Number,
+            price: String
+        }, { versionKey: false });
 
-    var set = mongoose.Schema({
-        name: String,
-    }, { versionKey: false });
+        card.set("toJSON", {
+            transform: function (document, ret) {
+                delete ret._id;
+                delete ret.price;
+            }
+        });
+
+        return mongoose.model("cards", card);
+    }
+
+    var set = () => {
+        var set = mongoose.Schema({
+            name: String,
+        }, { versionKey: false });
+
+        return mongoose.model("sets", set);
+    }
+
+    var user = () => {
+        var user = mongoose.Schema({
+            name: String,
+            google: String
+        }, { versionKey: false });
+
+        user.set("toJSON", {
+            transform: function (document, ret) {
+                ret.id = ret._id;
+                delete ret._id;
+            }
+        });
+
+        return mongoose.model("users", user);
+    }
 
     return {
-        Deck: mongoose.model("decks", deck),
-        Card: mongoose.model("cards", card),
-        Set: mongoose.model("sets", set)
+        Deck: deck(),
+        Card: card(),
+        Set: set(),
+        User: user()
     };
 };
