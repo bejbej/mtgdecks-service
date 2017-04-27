@@ -1,111 +1,148 @@
-module.exports = function cardUpdater() {
+module.exports = function () {
     var http = require("request-promise");
     var q = require("q");
     var db = require("../db/db.js");
 
-    var getExternalSets = () => {
-        var deferred = q.defer();
-        http.get("https://api.deckbrew.com/mtg/sets").then(response => {
-            deferred.resolve(JSON.parse(response));
-        }, deferred.reject);
-        return deferred.promise;
+    var getSavedSetNames = () => {
+        return db.Set.find().then(sets => {
+            return sets.map(set => set.name);
+        });
     }
 
-    var getLocalSets = () => {
-        var deferred = q.defer();
-        db.Set.find({}).then(documents => {
-            deferred.resolve(documents.map(document => document._doc.name));
-        }, deferred.reject);
-        return deferred.promise;
+    var getSets = () => {
+        return http.get("https://api.scryfall.com/sets").then(response => {
+            return JSON.parse(response).data;
+        });
     }
 
-    var getCards = (url) => {
-        var mapCard = (card) => {
-            var types = ["creature", "artifact", "enchantment", "planeswalker", "land", "instant", "sorcery"];
-
-            return {
-                name: card.name,
-                cmc: card.cmc,
-                color: card.colors === undefined ? "colorless" : card.colors.length > 1 ? "multicolored" : card.colors[0],
-                primaryType: types.filter(type => {
-                    return card.types.some(cardType => cardType === type);
-                })[0],
-                multiverseId: card.editions.map(edition => {
-                    return edition.multiverse_id;
-                }).sort((a, b) => {
-                    return a - b;
-                }).pop()
-            }
-        }
-
-        var getCardsRecursively = (url, page, cards, deferred) => {
-            http.get(url + "&page=" + page).then(response => {
-                var apiCards = JSON.parse(response)
-                cards = cards.concat(apiCards.filter(card => card.types).map(mapCard));
-                if (apiCards.length >= 100) {
-                    getCardsRecursively(url, page + 1, cards, deferred);
+    var getCards = (set) => {
+        var start = new Date();
+        var recursiveGetCards = (uri, cards, deferred) => {
+            http.get(uri).then(response => {
+                response = JSON.parse(response);
+                cards = cards.concat(response.data);
+                if (response.next_page) {
+                    recursiveGetCards(response.next_page, cards, deferred);
                 } else {
+                    var end = new Date();
+                    console.log("Retrieved cards for " + set.name + " in " + (end - start) + "ms.");
                     deferred.resolve(cards);
                 }
-            }, deferred.reject)
+            }, deferred.reject);
         }
 
         var deferred = q.defer();
-        getCardsRecursively(url, 0, [], deferred);
+        recursiveGetCards(set.search_uri, [], deferred);
         return deferred.promise;
     }
 
-    var addSet = (set) => {
-        var deferred = q.defer();
-        getCards(set.cards_url).then(cards => {
-            q.all(cards.map(saveCard)).then(() => {
-                saveSet(set).then(deferred.resolve, deferred.reject);
-            }, deferred.reject);
-        }, deferred.reject);
-        return deferred.promise;
+    var getExistingCards = (names) => {
+        return db.Card.find({ name: { $in: names } });
+    }
+
+    var parseCards = (cards) => {
+        var normalCards = cards.filter(card => card.layout !== "split");
+        var splitCards = cards.filter(card => card.layout === "split").sort((a, b) => {
+            return a.multiverse_id > b.multiverse_id ? 1 : -1;
+        });
+        var combinedSplitCards = [];
+        for (var i = 0; i < splitCards.length; i = i + 2) {
+            var unique = (array) => {
+                return Array.from(new Set(array));
+            }
+
+            var bothHalves = [splitCards[i], splitCards[i + 1]];
+            var firstCard = bothHalves.filter(card => card.id === splitCards[i]["all_parts"][0].id)[0];
+            var secondCard = bothHalves.filter(card => card.id === splitCards[i]["all_parts"][1].id)[0];
+
+            firstCard.name = firstCard.name + " // " + secondCard.name;
+            firstCard.converted_mana_cost = Number(firstCard.converted_mana_cost) + Number(secondCard.converted_mana_cost);
+            firstCard.colors = unique(firstCard.colors.concat(secondCard.colors));
+
+            combinedSplitCards.push(firstCard);
+        }
+
+        return normalCards.concat(combinedSplitCards);
+    }
+
+    var saveSetName = (name) => {
+        return db.Set.findOneAndUpdate({ name: name }, name, { upsert: true });
     }
 
     var saveSet = (set) => {
-        var mapSet = (set) => {
-            return {
-                name: set.id
-            }
-        }
-        var deferred = q.defer();
-        var set = mapSet(set);
-        db.Set.findOneAndUpdate({ name: set.name }, set, { upsert: true }).then(deferred.resolve, deferred.reject);
-        return deferred.promise;
+        return getCards(set).then(parseCards).then(cards => {
+            return getExistingCards(cards.map(card => card.name)).then(existingCards => {
+                return cards.map(card => {
+                    var existingCard = existingCards.filter(existingCard => existingCard.name === card.name)[0];
+
+                    if (existingCard) {
+                        card.multiverse_id = card.multiverse_id > existingCard.multiverseId ? card.multiverse_id : existingCard.multiverseId;
+                    }
+
+                    return saveCard(card);
+                });
+            });
+
+        }).then(q.all).then(() => {
+            return saveSetName(set.name);
+        });
     }
 
     var saveCard = (card) => {
-        var deferred = q.defer();
-        db.Card.findOneAndUpdate({ name: card.name }, card, { upsert: true }).then(deferred.resolve, deferred.reject);
-        return deferred.promise;
+        var determineType = (types) => {
+            var types = ["creature", "artifact", "enchantment", "planeswalker", "land", "instant", "sorcery"];
+
+            for (var i = 0; i < types.length; ++i) {
+                if (card.type_line.toLowerCase().includes(types[i])) {
+                    return types[i];
+                }
+            }
+        }
+
+        var determineColor = (colors) => {
+            var colorDict = {
+                W: "white",
+                U: "blue",
+                B: "black",
+                R: "red",
+                G: "green"
+            }
+
+            switch (colors.length) {
+                case 0:
+                    return "colorless"
+                case 1:
+                    return colorDict[colors[0]];
+                default:
+                    return "multicolored";
+            }
+        }
+
+        var newCard = {
+            name: card.name,
+            cmc: card.converted_mana_cost,
+            color: determineColor(card.colors),
+            primaryType: determineType(card.types),
+            multiverseId: card.multiverse_id
+        }
+
+        return db.Card.findOneAndUpdate({ name: newCard.name }, newCard, { upsert: true });
     }
 
     var exec = (limit) => {
-        var deferred = q.defer();
+        return q.all([getSavedSetNames(), getSets()]).then(results => {
+            var setNames = results[0];
+            var sets = results[1];
 
-        q.all([getExternalSets(), getLocalSets()]).then(results => {
-            var externalSets = results[0];
-            var localSets = results[1];
+            // Filter out sets that have already been added
+            // Don't import un sets, or any sets that have weird card frames
+            sets = sets.filter(set => ["promo", "funny", "masterpiece"].indexOf(set.set_type) === -1).filter(set => setNames.indexOf(set.name) === -1).slice(0, limit);
 
-            if (externalSets.length === localSets.length) {
-                deferred.resolve(0);
-                return;
-            }
-
-            var promises = externalSets.filter(set => {
-                return !localSets.some(localSet => localSet === set.id)
-            }).slice(0, limit).map(addSet);
-
-            q.all(promises).then(() => {
-                deferred.resolve(promises.length)
-            }, deferred.reject);
-        }, deferred.reject);
-
-        return deferred.promise;
+            return q.all(sets.map(saveSet)).then(() => {
+                return sets.length;
+            });
+        });
     }
 
-    return { exec: exec };
+    return { exec: exec }
 }();

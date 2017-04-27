@@ -40,7 +40,7 @@ module.exports = function () {
             cmc: Number,
             primaryType: String,
             color: String,
-            multiverseId: Number,
+            multiverseId: String,
             price: String
         }, { versionKey: false });
 
