@@ -5,7 +5,8 @@ module.exports = (app) => {
     var queryUtilities = require("../common/queryUtilities.js");
 
     app.get("/api/cards", (request, response) => {
-        db.Card.find({ name: { $in: request.query.name } }).then(cards => {
+        var names = queryUtilities.createCaseInsensitiveQuery(request.query.name);
+        db.Card.find({ name: { $in: names } }).then(cards => {
             response.status(200).json(cards);
         }, error => {
             handleError(response, error.message, "Failed to get cards.");
