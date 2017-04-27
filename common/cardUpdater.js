@@ -1,6 +1,7 @@
-module.exports = function cardUpdater(schema) {
+module.exports = function cardUpdater() {
     var http = require("request-promise");
     var q = require("q");
+    var db = require("../db/db.js");
 
     var getExternalSets = () => {
         var deferred = q.defer();
@@ -12,7 +13,7 @@ module.exports = function cardUpdater(schema) {
 
     var getLocalSets = () => {
         var deferred = q.defer();
-        schema.Set.find({}).then(documents => {
+        db.Set.find({}).then(documents => {
             deferred.resolve(documents.map(document => document._doc.name));
         }, deferred.reject);
         return deferred.promise;
@@ -72,17 +73,17 @@ module.exports = function cardUpdater(schema) {
         }
         var deferred = q.defer();
         var set = mapSet(set);
-        schema.Set.findOneAndUpdate({ name: set.name }, set, { upsert: true }).then(deferred.resolve, deferred.reject);
+        db.Set.findOneAndUpdate({ name: set.name }, set, { upsert: true }).then(deferred.resolve, deferred.reject);
         return deferred.promise;
     }
 
     var saveCard = (card) => {
         var deferred = q.defer();
-        schema.Card.findOneAndUpdate({ name: card.name }, card, { upsert: true }).then(deferred.resolve, deferred.reject);
+        db.Card.findOneAndUpdate({ name: card.name }, card, { upsert: true }).then(deferred.resolve, deferred.reject);
         return deferred.promise;
     }
 
-    this.exec = (limit) => {
+    var exec = (limit) => {
         var deferred = q.defer();
 
         q.all([getExternalSets(), getLocalSets()]).then(results => {
@@ -105,4 +106,6 @@ module.exports = function cardUpdater(schema) {
 
         return deferred.promise;
     }
-}
+
+    return { exec: exec };
+}();

@@ -1,4 +1,7 @@
-module.exports = function (mongoose) {
+module.exports = function () {
+    var mongoose = require("mongoose");
+    var q = require("q");
+
     var deck = () => {
         var cardGroup = mongoose.Schema({
             _id: false,
@@ -55,6 +58,12 @@ module.exports = function (mongoose) {
             name: String,
         }, { versionKey: false });
 
+        set.set("toJSON", {
+            transform: (document, ret) => {
+                delete ret._id;
+            }
+        });
+
         return mongoose.model("sets", set);
     }
 
@@ -74,10 +83,22 @@ module.exports = function (mongoose) {
         return mongoose.model("users", user);
     }
 
+    var init = (connectionString) => {
+        mongoose.connect(connectionString);
+        var db = mongoose.connection;
+
+        var deferred = q.defer();
+        db.on("error", deferred.reject);
+        db.on("error", console.error.bind(console, "connection error:"));
+        db.once("open", deferred.resolve);
+        return deferred.promise;
+    }
+
     return {
         Deck: deck(),
         Card: card(),
         Set: set(),
-        User: user()
+        User: user(),
+        init: init
     };
-};
+}();
