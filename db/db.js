@@ -20,7 +20,8 @@ module.exports = function () {
                 required: true,
                 default: ""
             },
-            owners: [String]
+            owners: [String],
+            notes: String
         }, { versionKey: false });
 
         deck.set("toJSON", {
