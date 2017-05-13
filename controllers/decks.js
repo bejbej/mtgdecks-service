@@ -35,7 +35,7 @@ module.exports = (app) => {
 
     app.put("/api/decks/:id", authenticateUser, (request, response) => {
         db.Deck.update({ _id:request.params.id, owners: [request.user] }, request.body).then(result => {
-            if (result.result.n === 1) {
+            if (result.n === 1) {
                 response.status(204).end();
             } else {
                 db.Deck.count({ _id:request.params.id }).then(result => {

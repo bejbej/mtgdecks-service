@@ -1,6 +1,7 @@
 module.exports = (request, response, next) => {
     var jwt = require("jwt-simple");
     var moment = require("moment");
+    var handleError = require("./handleError.js");
 
     if (!request.header('Authorization')) {
         return response.status(401).send({ message: 'Please make sure your request has an Authorization header' });
