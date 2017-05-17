@@ -21,7 +21,8 @@ module.exports = function () {
                 default: ""
             },
             owners: [String],
-            notes: String
+            notes: String,
+            tags: [String]
         }, { versionKey: false });
 
         deck.set("toJSON", {

@@ -4,7 +4,7 @@ module.exports = (app) => {
     var handleError = require("../common/handleError.js");
 
     app.get("/api/decks", (request, response) => {
-        db.Deck.find({ owners: request.query.owner }, "_id name").then(decks => {
+        db.Deck.find({ owners: request.query.owner }, "_id name tags").then(decks => {
             response.status(200).json({ results: decks });
         }, error => {
             handleError(response, error.message, "Failed to find decks.");
