@@ -35,40 +35,6 @@ module.exports = function () {
         return mongoose.model("decks", deck);
     }
 
-    var card = () => {
-        var card = mongoose.Schema({
-            name: String,
-            cmc: Number,
-            primaryType: String,
-            color: String,
-            multiverseId: String,
-            price: String
-        }, { versionKey: false });
-
-        card.set("toJSON", {
-            transform: function (document, ret) {
-                delete ret._id;
-                delete ret.price;
-            }
-        });
-
-        return mongoose.model("cards", card);
-    }
-
-    var set = () => {
-        var set = mongoose.Schema({
-            name: String,
-        }, { versionKey: false });
-
-        set.set("toJSON", {
-            transform: (document, ret) => {
-                delete ret._id;
-            }
-        });
-
-        return mongoose.model("sets", set);
-    }
-
     var user = () => {
         var user = mongoose.Schema({
             name: String,
@@ -98,8 +64,6 @@ module.exports = function () {
 
     return {
         Deck: deck(),
-        Card: card(),
-        Set: set(),
         User: user(),
         init: init
     };

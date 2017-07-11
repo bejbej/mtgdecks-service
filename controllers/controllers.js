@@ -5,7 +5,5 @@ module.exports = (app) => {
 
     require("./decks.js")(app);
     require("./auth.js")(app);
-    require("./cards.js")(app);
     require("./users.js")(app);
-    require("./sets.js")(app);
 }
