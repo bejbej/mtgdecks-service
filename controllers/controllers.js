@@ -5,6 +5,7 @@ module.exports = function() {
             response.status(200).json({ cat: "~(=^..^)" });
         });
     
+        require("./cards.js")(app);
         require("./decks.js")(app);
         require("./auth.js")(app);
         require("./users.js")(app);

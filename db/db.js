@@ -1,6 +1,22 @@
 module.exports = function () {
     const mongoose = require("mongoose");
 
+    let card = () => {
+        var card = mongoose.Schema({
+            name: String,
+            usd: String,
+            updatedOn: Date,
+        }, { versionKey: false });
+
+        card.set("toJSON", {
+            transform: function (document, ret) {
+                delete ret._id;
+            }
+        });
+
+        return mongoose.model("cardPrices", card);
+    }
+
     var deck = () => {
         var cardGroup = mongoose.Schema({
             _id: false,
@@ -56,6 +72,7 @@ module.exports = function () {
     }
 
     return {
+        Card: card(),
         Deck: deck(),
         User: user(),
         init: init

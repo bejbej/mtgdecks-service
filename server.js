@@ -1,14 +1,16 @@
+require('env2')('./env.json');
 require("express-async-errors");
+require("./common/helpers.js");
 var bodyParser = require("body-parser");
 var controllers = require("./controllers/controllers.js");
 var cors = require("cors");
 var db = require("./db/db.js");
-var env = require('env2')('./env.json');
 var express = require("express");
 
 var app = express();
 app.use(cors());
 app.use(bodyParser.json());
+app.use(bodyParser.text({type: "application/text"}));
 
 controllers.init(app);
 
