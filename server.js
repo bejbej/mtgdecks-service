@@ -1,14 +1,22 @@
+require("express-async-errors");
 var bodyParser = require("body-parser");
-var cors = require("cors");
-var express = require("express");
-var env = require('env2')('./env.json');
-var db = require("./db/db.js");
 var controllers = require("./controllers/controllers.js");
+var cors = require("cors");
+var db = require("./db/db.js");
+var env = require('env2')('./env.json');
+var express = require("express");
 
 var app = express();
 app.use(cors());
 app.use(bodyParser.json());
-controllers(app);
+
+controllers.init(app);
+
+app.use((error, request, response, next) => {
+    console.log(error.message);
+    console.log(error.stack);
+    response.status(500).end();
+});
 
 if (process.env.https === true) {
     app.use((request, response, next) => {
@@ -17,12 +25,17 @@ if (process.env.https === true) {
     });
 }
 
-db.init(process.env.database).then(() => {
-    console.log("Database connection ready");
-    var server = app.listen(process.env.PORT || 8082, function () {
-        var port = server.address().port;
+(async () => {
+    try {
+        await db.init(process.env.database);
+        console.log("Database connection ready");
+    }
+    catch (error) {
+        console.log(error.message);
+        process.exit(0);
+    }
+    let server = app.listen(process.env.PORT || 8082, () => {
+        let port = server.address().port;
         console.log("App now running on port", port);
     });
-}, () => {
-    console.log("Database connection error");
-});
+})();

@@ -1,13 +1,22 @@
 module.exports = (app) => {
-    var http = require("request-promise");
-    var jwt = require("jwt-simple");
-    var moment = require("moment");
-    var db = require("../db/db.js");
-    var handleError = require("../common/handleError.js");
+    const http = require("request-promise");
+    const jwt = require("jwt-simple");
+    const moment = require("moment");
+    const db = require("../db/db.js");
 
-    app.post("/api/auth/google", (request, response) => {
-        var accessTokenUrl = 'https://accounts.google.com/o/oauth2/token';
-        var peopleApiUrl = 'https://www.googleapis.com/plus/v1/people/me/openIdConnect';
+    const accessTokenUrl = 'https://accounts.google.com/o/oauth2/token';
+    const peopleApiUrl = 'https://www.googleapis.com/plus/v1/people/me/openIdConnect';
+
+    let createJWT = (user) => {
+        var payload = {
+            sub: user._id,
+            iat: moment().unix(),
+            exp: moment().add(14, 'days').unix()
+        };
+        return jwt.encode(payload, process.env.tokenSecret);
+    }
+
+    app.post("/api/auth/google", async (request, response) => {
         var params = {
             code: request.body.code,
             client_id: request.body.clientId,
@@ -16,43 +25,22 @@ module.exports = (app) => {
             grant_type: 'authorization_code'
         };
 
-        var createJWT = (user) => {
-            var payload = {
-                sub: user._id,
-                iat: moment().unix(),
-                exp: moment().add(14, 'days').unix()
-            };
-            return jwt.encode(payload, process.env.tokenSecret);
+        let postResponse = await http.post(accessTokenUrl, { form: params, json: true });
+        let accessToken = postResponse.access_token;
+        let headers = { Authorization: 'Bearer ' + accessToken };
+
+        let googleUser = await http.get({ url: peopleApiUrl, headers: headers, json: true });
+        let user = await db.User.findOne({ google: googleUser.sub });
+
+        if (user) {
+            response.status(200).json({ token: createJWT(user) });
+            return;
         }
 
-        http.post(accessTokenUrl, { form: params, json: true }).then(res => {
-            var accessToken = res.access_token;
-            var headers = { Authorization: 'Bearer ' + accessToken };
-
-            http.get({ url: peopleApiUrl, headers: headers, json: true }).then(res => {
-                db.User.findOne({ google: res.sub }).then(user => {
-                    if (user) {
-                        response.status(200).json({ token: createJWT(user) })
-                    } else {
-                        var user = new db.User();
-                        user.name = res.name;
-                        user.google = res.sub;
-                        user.save().then(() => {
-                            response.status(200).json({ token: createJWT(user) })
-                        }, error => {
-                            handleError(response, error.message, "Failed to save user.");
-                        });
-                    }
-                }, error => {
-                    handleError(response, error.message, "Failed to get user.");
-                });
-
-            }, error => {
-                handleError(reponse, error.message, "Failed to get person.");
-            });
-
-        }, error => {
-            handleError(response, error.message, "Failed to get access token.");
-        });
+        user = new db.User();
+        user.name = googleUser.name;
+        user.google = googleUser.sub;
+        await user.save();
+        response.status(200).json({ token: createJWT(user) });
     });
 }

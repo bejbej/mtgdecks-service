@@ -1,6 +1,5 @@
 module.exports = function () {
-    var mongoose = require("mongoose");
-    var q = require("q");
+    const mongoose = require("mongoose");
 
     var deck = () => {
         var cardGroup = mongoose.Schema({
@@ -51,15 +50,9 @@ module.exports = function () {
         return mongoose.model("users", user);
     }
 
-    var init = (connectionString) => {
-        mongoose.connect(connectionString);
-        var db = mongoose.connection;
-
-        var deferred = q.defer();
-        db.on("error", deferred.reject);
-        db.on("error", console.error.bind(console, "connection error:"));
-        db.once("open", deferred.resolve);
-        return deferred.promise;
+    let init = async (connectionString) => {
+        mongoose.Promise = Promise;
+        await mongoose.connect(connectionString, { useMongoClient: true });
     }
 
     return {
