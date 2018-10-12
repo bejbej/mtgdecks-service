@@ -1,24 +1,17 @@
 require('env2')('./env.json');
-require("express-async-errors");
-require("./common/helpers.js");
+require("./common/array.js");
 var bodyParser = require("body-parser");
 var controllers = require("./controllers/controllers.js");
 var cors = require("cors");
 var db = require("./db/db.js");
-var express = require("express");
+const App = require("./common/app.js");
 
-var app = express();
+var app = App();
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.text({type: "application/text"}));
 
 controllers.init(app);
-
-app.use((error, request, response, next) => {
-    console.log(error.message);
-    console.log(error.stack);
-    response.status(500).end();
-});
 
 if (process.env.https === true) {
     app.use((request, response, next) => {

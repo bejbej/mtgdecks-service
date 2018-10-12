@@ -13,11 +13,11 @@ module.exports = (request, response, next) => {
         payload = jwt.decode(token, process.env.tokenSecret);
     }
     catch (error) {
-        response.status(401).end();
+        return response.status(401).end();
     }
 
     if (payload.exp <= moment().unix()) {
-        response.status(401).end();
+        return response.status(401).end();
     }
 
     request.user = payload.sub;

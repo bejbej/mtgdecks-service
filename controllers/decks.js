@@ -22,7 +22,7 @@ module.exports = (app) => {
     app.put("/api/decks/:id", authenticateUser, async (request, response) => {
         let result = await db.Deck.update({ _id:request.params.id, owners: [request.user] }, request.body);
         if (result.n === 1) {
-            response.status(204).end();
+            return response.status(204).end();
         }
 
         let count = await db.Deck.count({ _id:request.params.id });
@@ -32,7 +32,7 @@ module.exports = (app) => {
     app.delete("/api/decks/:id", authenticateUser, async (request, response) => {
         let commandResult = await db.Deck.remove({ _id: request.params.id, owners: request.user });
         if (commandResult.result.n === 1) {
-            response.status(204).end();
+            return response.status(204).end();
         }
 
         let count = await db.Deck.count({ _id:request.params.id });
