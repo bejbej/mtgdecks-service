@@ -35,11 +35,14 @@ module.exports = function () {
 
         let escapedCardNames = cardNames.map(cardName => querystring.escape(cardName.replace(/[\/\\^$*+?.()|[\]{}]/g, '\\$&')));
         let promises = escapedCardNames.map(cardName => {
-            let query = "?order=usd&q=name:/^" + cardName + "$\/";
+            let query = "?order=usd&q=name:/^" + cardName + "($| \\/\\/)\/";
             return http.get(cardPriceUri + query)
-                .then(response => JSON.parse(response).data)
+                .then(response => {
+                    return JSON.parse(response).data;
+                })
                 .catch(response => {
-                    return response.statusCode === 404 ? [] : Promise.reject(response);
+                    console.log(`${response.statusCode} - ${response.message}`);
+                    return [];
                 });
         });
 
