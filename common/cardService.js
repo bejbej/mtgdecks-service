@@ -37,11 +37,12 @@ module.exports = function () {
         let promises = escapedCardNames.map(cardName => {
             let query = "?order=usd&q=name:/^" + cardName + "($| \\/\\/)\/";
             return http.get(cardPriceUri + query)
-                .then(response => {
-                    return JSON.parse(response).data;
-                })
+                .then(response => JSON.parse(response).data)
                 .catch(response => {
-                    console.log(`${response.statusCode} - ${response.message}`);
+                    let log = new db.Log();
+                    log.date = new Date();
+                    log.message = `${response.options.method} ${response.options.uri} - ${response.statusCode} - ${response.message}`;
+                    log.save();
                     return [];
                 });
         });
@@ -49,13 +50,13 @@ module.exports = function () {
         let apiCards = Array.flatten(await Promise.all(promises));
         let now = new Date();
 
-        cards = cardNames.reduce((array, cardName) => {
+        let cards = cardNames.reduce((array, cardName) => {
             let apiCard = apiCards.find(x => x.name.toLowerCase().startsWith(cardName.toLowerCase()));
 
             if (apiCard) {
                 array.push({
                     name: cardName,
-                    usd: apiCard ? apiCard.usd : undefined,
+                    usd: apiCard.usd,
                     updatedOn: now
                 });
             }
@@ -84,14 +85,6 @@ module.exports = function () {
         let unknownCards = await getUnknownCards(unknownCardNames);
         let cards = knownCards.concat(unknownCards);
         cards.forEach(card => card.updatedOn = undefined);
-
-        if (validCardNames.length !== cards.length) {
-            let failedCardNames = Array.except(validCardNames, cards.map(card => card.name))
-            console.log("Can't determine the price for all cards.");
-            console.log("All Card Names: " + validCardNames);
-            console.log("Failed Card Names: " + failedCardNames);
-        }
-
         return cards;
     }
 

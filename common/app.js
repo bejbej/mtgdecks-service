@@ -1,6 +1,7 @@
 module.exports = () => {
 
     const express = require("express")();
+    const db = require("../db/db.js");
 
     let call = (func, request, response, next) => {
         Promise.resolve().then(async () => {
@@ -8,8 +9,10 @@ module.exports = () => {
                 await func(request, response, next);
             }
             catch (error) {
-                console.log(error.message);
-                console.log(error.stack);
+                let log = new db.Log();
+                log.date = new Date();
+                log.message = `${error.message} ${error.stack}`;
+                log.save();
                 response.status(500).end();
             }
         });

@@ -66,6 +66,15 @@ module.exports = function () {
         return mongoose.model("users", user);
     }
 
+    var log = () => {
+        var log = mongoose.Schema({
+            date: Date,
+            message: String
+        }, { versionKey: false });
+
+        return mongoose.model("log", log);
+    }
+
     let init = async (connectionString) => {
         mongoose.Promise = Promise;
         await mongoose.connect(connectionString, { useMongoClient: true });
@@ -74,6 +83,7 @@ module.exports = function () {
     return {
         Card: card(),
         Deck: deck(),
+        Log: log(),
         User: user(),
         init: init
     };
