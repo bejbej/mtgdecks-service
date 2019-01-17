@@ -4,8 +4,8 @@ module.exports = (app) => {
     const moment = require("moment");
     const db = require("../db/db.js");
 
-    const accessTokenUrl = 'https://accounts.google.com/o/oauth2/token';
-    const peopleApiUrl = 'https://www.googleapis.com/plus/v1/people/me/openIdConnect';
+    const accessTokenUrl = "https://www.googleapis.com/oauth2/v4/token";
+    const tokenInfoUrl = "https://www.googleapis.com/oauth2/v1/tokeninfo";
 
     let createJWT = (user) => {
         var payload = {
@@ -22,21 +22,18 @@ module.exports = (app) => {
             client_id: request.body.clientId,
             client_secret: process.env.googleSecret,
             redirect_uri: request.body.redirectUri,
-            grant_type: 'authorization_code'
+            grant_type: "authorization_code"
         };
 
-        let postResponse = await http.post(accessTokenUrl, { form: params, json: true });
-        let accessToken = postResponse.access_token;
-        let headers = { Authorization: 'Bearer ' + accessToken };
-
-        let googleUser = await http.get({ url: peopleApiUrl, headers: headers, json: true });
-        let user = await db.User.findOne({ google: googleUser.sub });
-
+        let accessToken = JSON.parse(await http.post(accessTokenUrl, { form: params }));
+        let tokenInfo = JSON.parse(await http.post(tokenInfoUrl, { form: { access_token: accessToken.access_token } }));
+        let user = await db.User.findOne({ google: tokenInfo.user_id });
+        
         if (user) {
             response.status(200).json({ token: createJWT(user) });
             return;
         }
-
+        
         user = new db.User();
         user.name = googleUser.name;
         user.google = googleUser.sub;
