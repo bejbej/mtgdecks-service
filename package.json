@@ -9,14 +9,14 @@
   "author": "James H",
   "license": "ISC",
   "dependencies": {
-    "body-parser": "^1.15.2",
-    "cors": "^2.8.1",
-    "env2": "^2.1.1",
-    "express": "^4.14.0",
-    "jwt-simple": "^0.5.1",
-    "moment": "^2.17.1",
-    "mongoose": "^4.7.2",
-    "request": "^2.79.0",
+    "body-parser": "^1.18.3",
+    "cors": "^2.8.5",
+    "env2": "^2.2.2",
+    "express": "^4.16.4",
+    "jwt-simple": "^0.5.5",
+    "moment": "^2.23.0",
+    "mongoose": "^4.13.17",
+    "request": "^2.88.0",
     "request-promise": "^4.1.1"
   }
 }
