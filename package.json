@@ -14,9 +14,9 @@
     "env2": "^2.2.2",
     "express": "^4.16.4",
     "jwt-simple": "^0.5.5",
-    "moment": "^2.23.0",
-    "mongoose": "^4.13.17",
+    "moment": "^2.24.0",
+    "mongoose": "^4.13.18",
     "request": "^2.88.0",
-    "request-promise": "^4.1.1"
+    "request-promise": "^4.2.4"
   }
 }
