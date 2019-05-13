@@ -56,7 +56,7 @@ module.exports = function () {
             if (apiCard) {
                 array.push({
                     name: cardName,
-                    usd: apiCard.prices.usd,
+                    usd: Math.min(apiCard.prices.usd || Number.POSITIVE_INFINITY, apiCard.prices.usd_foil || Number.POSITIVE_INFINITY),
                     updatedOn: now
                 });
             }
