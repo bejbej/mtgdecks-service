@@ -34,9 +34,12 @@ module.exports = (app) => {
             return;
         }
         
+        let match = /(.{2})([^@]+)([^@]{2}@.*)/.exec(tokenInfo.email);
+        let name = match[1] + match[2].replace(/./g, "*") + match[3];
+
         user = new db.User();
-        user.name = googleUser.name;
-        user.google = googleUser.sub;
+        user.name = name;
+        user.google = tokenInfo.user_id
         await user.save();
         response.status(200).json({ token: createJWT(user) });
     });
