@@ -31,7 +31,7 @@ module.exports = (app) => {
 
     app.delete("/api/decks/:id", authenticateUser, async (request, response) => {
         let commandResult = await db.Deck.remove({ _id: request.params.id, owners: request.user });
-        if (commandResult.result.n === 1) {
+        if (commandResult.n === 1) {
             return response.status(204).end();
         }
 
