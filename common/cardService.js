@@ -13,8 +13,8 @@ module.exports = function () {
     let getValidCardNames = async (cardNames) => {
         let cards = await cache.get("cards", async () => {
             let response = await http.get(cardDefinitionUri);
-            response = response.substring(response.indexOf("`") + 1, response.lastIndexOf("`"));
-            return csv.parse(response, "\t").reduce((dictionary, card) => {
+            let trimmedResponse = response.substring(response.indexOf("`") + 1, response.lastIndexOf("`"));
+            return csv.parse(trimmedResponse, "\t").reduce((dictionary, card) => {
                 dictionary[card.name.toLowerCase()] = true;
                 return dictionary;
             }, {});
@@ -33,10 +33,10 @@ module.exports = function () {
             return [];
         }
 
-        let escapedCardNames = cardNames.map(cardName => querystring.escape(cardName.replace(/[\/\\^$*+?.()|[\]{}]/g, '\\$&')));
+        let escapedCardNames = cardNames.map(cardName => querystring.escape(cardName.replace(/[\/\\^$*+?.()|[\]{}]/g, "\\$&")));
         let promises = escapedCardNames.map(cardName => {
-            let query = "?order=usd&q=name:/^" + cardName + "($| \\/\\/)\/";
-            return http.get(cardPriceUri + query)
+            let uri = `${cardPriceUri}?order=usd&q=name:/^${cardName}$/`;
+            return http.get(uri)
                 .then(response => JSON.parse(response).data)
                 .catch(response => {
                     let log = new db.Log();
@@ -49,21 +49,17 @@ module.exports = function () {
 
         let apiCards = Array.flatten(await Promise.all(promises));
         let now = new Date();
-
-        let cards = cardNames.reduce((array, cardName) => {
-            let apiCard = apiCards.find(x => x.name.toLowerCase().startsWith(cardName.toLowerCase()));
-
-            if (apiCard) {
-                array.push({
-                    name: cardName,
-                    usd: Math.min(apiCard.prices.usd || Number.POSITIVE_INFINITY, apiCard.prices.usd_foil || Number.POSITIVE_INFINITY),
+        let cards = apiCards
+            .map(apiCard => {
+                let prices = [apiCard.prices.usd, apiCard.prices.usd_foil, apiCard.prices.usd_etched].filter(x => x);
+                return {
+                    name: apiCard.name.toLowerCase(),
+                    usd: prices.length > 0 ? Math.min(...prices) : null,
                     updatedOn: now
-                });
-            }
-
-            return array;
-        }, []);
-
+                };
+            })
+            .filter(card => card.usd != null);
+        
         await Promise.all(cards.map(save));
 
         return cards;
