@@ -33,11 +33,15 @@ module.exports = function () {
             return [];
         }
 
-        let escapedCardNames = cardNames.map(cardName => querystring.escape(cardName.replace(/[\/\\^$*+?.()|[\]{}]/g, "\\$&")));
-        let promises = escapedCardNames.map(cardName => {
-            let uri = `${cardPriceUri}?order=usd&q=name:/^${cardName}$/`;
+        let promises = cardNames.map(cardName => {
+            const escapedCardName = querystring.escape(cardName.replace(/[\/\\^$*+?.()|[\]{}]/g, "\\$&"));
+            let uri = `${cardPriceUri}?order=usd&q=name:/^${escapedCardName}($| \\/\\/)\//`;
             return http.get(uri)
-                .then(response => JSON.parse(response).data)
+                .then(response => {
+                    const cards = JSON.parse(response).data;
+                    cards[0].name = cardName;
+                    return cards;
+                })
                 .catch(response => {
                     let log = new db.Log();
                     log.date = new Date();
@@ -76,7 +80,7 @@ module.exports = function () {
     let get = async (cardNames) => {
         cardNames = cardNames.map(cardName => cardName.toLowerCase());
         let validCardNames = await getValidCardNames(cardNames);
-        let knownCards = await getKnownCards(validCardNames);
+        let knownCards = []//await getKnownCards(validCardNames);
         let unknownCardNames = except(validCardNames, (knownCards.map(card => card.name)));
         let unknownCards = await getUnknownCards(unknownCardNames);
         let cards = knownCards.concat(unknownCards);
