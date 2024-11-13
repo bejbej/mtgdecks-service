@@ -1,5 +1,4 @@
 require('env2')('./env.json');
-require("./common/array.js");
 var bodyParser = require("body-parser");
 var controllers = require("./controllers/controllers.js");
 var cors = require("cors");

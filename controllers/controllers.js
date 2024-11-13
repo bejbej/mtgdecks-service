@@ -9,10 +9,8 @@ module.exports = function() {
             throw { message: "~(=^..^)", stack: " ~(=^..^)\n  ~(=^..^)\n   ~(=^..^)"};
         });
     
-        require("./cards.js")(app);
         require("./decks.js")(app);
         require("./auth.js")(app);
-        require("./users.js")(app);
     }
 
     return {

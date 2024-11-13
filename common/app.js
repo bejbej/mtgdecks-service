@@ -9,10 +9,7 @@ module.exports = () => {
                 await func(request, response, next);
             }
             catch (error) {
-                let log = new db.Log();
-                log.date = new Date();
-                log.message = `${error.message} ${error.stack}`;
-                log.save();
+                console.log(`${error.message} ${error.stack}`);
                 response.status(500).end();
             }
         });
